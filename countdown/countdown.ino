@@ -29,9 +29,10 @@ const int bzr_pin =  8;
 
 // state variables
 Adafruit_BicolorMatrix matrix = Adafruit_BicolorMatrix();
-int state = STATE_INIT;
+int state = STATE_WELCOME;
 int btn_state_1 = 0;
 int btn_state_2 = 0;
+int counter = 0;
 
 void setup() {
   // initialize pin modes
@@ -39,7 +40,7 @@ void setup() {
   pinMode(btn_pin_2, INPUT);
   pinMode(bzr_pin, OUTPUT);
   
-  #ifdef SERIAL
+  #ifdef DEBUG
   // enable serial debugging
   Serial.begin(9600);
   #endif
@@ -63,63 +64,73 @@ void play_melody() {
   } 
 }
 
+inline void debug(const char *msg) {
+  #ifdef DEBUG
+    Serial.write(msg);
+  #endif
+}
+  
+
 void loop() {
   btn_state_1 = digitalRead(btn_pin_1);
   btn_state_2 = digitalRead(btn_pin_2);
+  int color;
   
   switch (state) {
-    
-    case STATE_INIT:
-      Serial.write("entering state init\n");
+
+    case STATE_WELCOME:
+      debug("entering state welcome\n");
       matrix.clear();
       matrix.drawBitmap(0, 0, smile_bmp, 8, 8, LED_GREEN);
       matrix.writeDisplay();
-      state = STATE_WELCOME;
+      state = STATE_INIT;
       break;
     
-    case STATE_WELCOME:
-      Serial.write("entering state welcome\n");
+    case STATE_INIT:
+      Serial.write("entering state init\n");
       if (btn_state_1 || btn_state_2) {
         state = STATE_COUNTDOWN;
       }
       break;
     
     case STATE_COUNTDOWN:
-     Serial.write("entering state countdown\n");
-     matrix.clear();
-     matrix.writeDisplay();
+      debug("entering state countdown\n");
+      matrix.clear();
+      matrix.writeDisplay();
      
-     int color = LED_GREEN;
-     for (int i = 0; i < 8; i++) {
-       if (i > 3) {
-         color = LED_YELLOW;
-       }
-       if (i > 6) {
-         color = LED_RED;
-       }
-       for (int j = 0; j < 8; j++) {
-         matrix.drawPixel(j, i, color);
-         matrix.writeDisplay();
+      color = LED_GREEN;
+      for (int i = 0; i < 8; i++) {
+        if (i > 3) {
+          color = LED_YELLOW;
+        }
+        if (i > 6) {
+          color = LED_RED;
+        }
+        for (int j = 0; j < 8; j++) {
+          matrix.drawPixel(j, i, color);
+          matrix.writeDisplay();
          
-         btn_state_1 = digitalRead(btn_pin_1);
-         btn_state_2 = digitalRead(btn_pin_2);
-         if (btn_state_1 || btn_state_2) {
-           state = STATE_COUNTDOWN;
-           Serial.write("reset countdown\n");
-           return;
-         }
-         delay(1000);
-       }
-     }
+          btn_state_1 = digitalRead(btn_pin_1);
+          btn_state_2 = digitalRead(btn_pin_2);
+          if (btn_state_1 || btn_state_2) {
+            state = STATE_COUNTDOWN;
+            Serial.write("reset countdown\n");
+            return;
+          }
+          delay(1000);
+        }
+      }
+      state = STATE_OVER;
+      break;
      
-     matrix.clear();
-     matrix.drawBitmap(0, 0, frown_bmp, 8, 8, LED_RED);
-     matrix.blinkRate(1);
-     matrix.writeDisplay();
-     play_melody();
-     matrix.blinkRate(0);
-     state = STATE_WELCOME;
-     break; 
+    case STATE_OVER:
+       matrix.clear();
+       matrix.drawBitmap(0, 0, frown_bmp, 8, 8, LED_RED);
+       matrix.blinkRate(1);
+       matrix.writeDisplay();
+       play_melody();
+       matrix.blinkRate(0);
+       state = STATE_INIT;
+       break; 
   }
-  
 }

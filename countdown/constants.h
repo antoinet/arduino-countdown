@@ -2,8 +2,8 @@
  * Public Constants
  *************************************************/
 
-#define STATE_INIT       0
-#define STATE_WELCOME    1
+#define STATE_WELCOME    0
+#define STATE_INIT       1
 #define STATE_COUNTDOWN  2
 #define STATE_OVER       3
 
