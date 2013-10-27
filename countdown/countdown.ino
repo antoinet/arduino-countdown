@@ -33,6 +33,7 @@ int state = STATE_WELCOME;
 int btn_state_1 = 0;
 int btn_state_2 = 0;
 int counter = 0;
+int timer = 0;
 
 void setup() {
   // initialize pin modes
@@ -74,7 +75,7 @@ inline void debug(const char *msg) {
 void loop() {
   btn_state_1 = digitalRead(btn_pin_1);
   btn_state_2 = digitalRead(btn_pin_2);
-  int color;
+  int color, i, j;
   
   switch (state) {
 
@@ -87,43 +88,53 @@ void loop() {
       break;
     
     case STATE_INIT:
-      Serial.write("entering state init\n");
+      debug("entering state init\n");
       if (btn_state_1 || btn_state_2) {
+        counter = 0;
+        timer = millis();
+        matrix.clear();
+        matrix.writeDisplay();
         state = STATE_COUNTDOWN;
       }
       break;
     
     case STATE_COUNTDOWN:
       debug("entering state countdown\n");
-      matrix.clear();
-      matrix.writeDisplay();
-     
-      color = LED_GREEN;
-      for (int i = 0; i < 8; i++) {
-        if (i > 3) {
-          color = LED_YELLOW;
-        }
-        if (i > 6) {
-          color = LED_RED;
-        }
-        for (int j = 0; j < 8; j++) {
-          matrix.drawPixel(j, i, color);
-          matrix.writeDisplay();
-         
-          btn_state_1 = digitalRead(btn_pin_1);
-          btn_state_2 = digitalRead(btn_pin_2);
-          if (btn_state_1 || btn_state_2) {
-            state = STATE_COUNTDOWN;
-            Serial.write("reset countdown\n");
-            return;
-          }
-          delay(1000);
-        }
+      if (millis() > (timer + DELAY)) {
+        timer = millis();
+        counter++;
       }
-      state = STATE_OVER;
+      
+      if (btn_state_1 || btn_state_2) {
+        debug("reset countdown\n");
+        counter = 0;
+        timer = millis();
+        matrix.clear();
+        matrix.writeDisplay();
+        state = STATE_COUNTDOWN;
+        return;
+      }
+      
+      i = counter / 8;
+      j = counter % 8;
+      
+      color = LED_GREEN;
+      if (i > 3) {
+        color = LED_YELLOW;
+      }
+      if (i > 6) {
+        color = LED_RED;
+      }
+      matrix.drawPixel(j, i, color);
+      matrix.writeDisplay();
+      
+      if (counter >= 64) {
+        state = STATE_OVER;
+      }
       break;
      
     case STATE_OVER:
+       debug("entering state over\n");
        matrix.clear();
        matrix.drawBitmap(0, 0, frown_bmp, 8, 8, LED_RED);
        matrix.blinkRate(1);

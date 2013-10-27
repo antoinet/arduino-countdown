@@ -2,6 +2,8 @@
  * Public Constants
  *************************************************/
 
+#define DELAY            1000
+
 #define STATE_WELCOME    0
 #define STATE_INIT       1
 #define STATE_COUNTDOWN  2
