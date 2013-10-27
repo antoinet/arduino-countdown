@@ -75,7 +75,6 @@ inline void debug(const char *msg) {
 void loop() {
   btn_state_1 = digitalRead(btn_pin_1);
   btn_state_2 = digitalRead(btn_pin_2);
-  int color, i, j;
   
   switch (state) {
 
@@ -115,18 +114,7 @@ void loop() {
         return;
       }
       
-      i = counter / 8;
-      j = counter % 8;
-      
-      color = LED_GREEN;
-      if (i > 3) {
-        color = LED_YELLOW;
-      }
-      if (i > 6) {
-        color = LED_RED;
-      }
-      matrix.drawPixel(j, i, color);
-      matrix.writeDisplay();
+      simpleRowTraverser(counter);
       
       if (counter >= 64) {
         state = STATE_OVER;
@@ -144,4 +132,20 @@ void loop() {
        state = STATE_INIT;
        break; 
   }
+}
+
+void simpleRowTraverser(int counter) {
+      int color;
+      int i = counter / 8;
+      int j = counter % 8;
+      
+      color = LED_GREEN;
+      if (i > 3) {
+        color = LED_YELLOW;
+      }
+      if (i > 6) {
+        color = LED_RED;
+      }
+      matrix.drawPixel(j, i, color);
+      matrix.writeDisplay();
 }
