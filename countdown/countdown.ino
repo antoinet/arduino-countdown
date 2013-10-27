@@ -23,17 +23,26 @@
 //#define DEBUG
 
 // pin assignments
-const int btn_pin_1 = 2;
-const int btn_pin_2 = 3;
-const int bzr_pin =  8;
+const uint8_t btn_pin_1 = 2;
+const uint8_t btn_pin_2 = 3;
+const uint8_t bzr_pin =  8;
 
 // state variables
 Adafruit_BicolorMatrix matrix = Adafruit_BicolorMatrix();
-int state = STATE_WELCOME;
-int btn_state_1 = 0;
-int btn_state_2 = 0;
-int counter = 0;
+uint8_t state = STATE_WELCOME;
+uint8_t btn_state_1 = 0;
+uint8_t btn_state_2 = 0;
+uint8_t counter = 0;
+boolean render_called = false;
 unsigned long timer = 0UL;
+uint8_t pixels[64];
+
+void (*render[])(uint8_t) = {
+  simple_row_traverser,
+  random_dot_filler,
+  spiralizer
+};
+void (*p_render)(uint8_t) = *render;
 
 void setup() {
   // initialize pin modes
@@ -46,38 +55,24 @@ void setup() {
   Serial.begin(9600);
   #endif
   
+  // zero out pixels array
+  memset(pixels, 0, sizeof(uint8_t)*64);
+  
   // initialize matrix
   matrix.begin(0x70);
   matrix.setRotation(3);
-}
-
-void play_melody() {
-  int len = sizeof(melody)/sizeof(melody[0]);
-  for (int i = 0; i < len; i++) {
-    int duration = 1000/noteDurations[i];
-    tone(bzr_pin, melody[i], duration);
-    
-    // 30% pause between notes
-    int pause = duration * 1.30;
-    delay(pause);
-    
-    noTone(bzr_pin);
-  } 
-}
-
-inline void debug(const char *msg) {
-  #ifdef DEBUG
-    Serial.write(msg);
-  #endif
-}
   
+  // init prng
+  randomSeed(analogRead(0));
+}
+
 
 void loop() {
+  // read button states
   btn_state_1 = digitalRead(btn_pin_1);
   btn_state_2 = digitalRead(btn_pin_2);
   
   switch (state) {
-
     case STATE_WELCOME:
       debug("entering state welcome\n");
       matrix.clear();
@@ -93,6 +88,8 @@ void loop() {
         timer = millis();
         matrix.clear();
         matrix.writeDisplay();
+        render_called = false;
+        p_render = render[random(sizeof(render)/sizeof(render[0]))];
         state = STATE_COUNTDOWN;
       }
       break;
@@ -101,20 +98,20 @@ void loop() {
       debug("entering state countdown\n");
       if (millis() > (timer + DELAY)) {
         timer = millis();
+        render_called = false;
         counter++;
       }
       
       if (btn_state_1 || btn_state_2) {
         debug("reset countdown\n");
-        counter = 0;
-        timer = millis();
-        matrix.clear();
-        matrix.writeDisplay();
-        state = STATE_COUNTDOWN;
+        state = STATE_INIT;
         return;
       }
       
-      simpleRowTraverser(counter);
+      if (!render_called) {
+        p_render(counter);
+        render_called = true;
+      }
       
       if (counter >= 64) {
         state = STATE_OVER;
@@ -134,18 +131,101 @@ void loop() {
   }
 }
 
-void simpleRowTraverser(int counter) {
-      int color;
-      int i = counter / 8;
-      int j = counter % 8;
-      
-      color = LED_GREEN;
-      if (i > 3) {
-        color = LED_YELLOW;
-      }
-      if (i > 6) {
-        color = LED_RED;
-      }
-      matrix.drawPixel(j, i, color);
-      matrix.writeDisplay();
+inline void debug(const char *msg) {
+  #ifdef DEBUG
+    Serial.write(msg);
+  #endif
+}
+
+void play_melody() {
+  int len = sizeof(melody)/sizeof(melody[0]);
+  for (int i = 0; i < len; i++) {
+    int duration = 1000/noteDurations[i];
+    tone(bzr_pin, melody[i], duration);
+    
+    // 30% pause between notes
+    int pause = duration * 1.30;
+    delay(pause);
+    
+    noTone(bzr_pin);
+  } 
+}
+
+void simple_row_traverser(uint8_t counter) {
+  uint8_t color = LED_GREEN;
+  uint8_t i = counter / 8;
+  uint8_t j = counter % 8;
+  
+  if (i > 3) {
+    color = LED_YELLOW;
+  }
+  if (i > 6) {
+    color = LED_RED;
+  }
+  matrix.drawPixel(i, j, color);
+  matrix.writeDisplay();
+}
+
+void random_dot_filler(uint8_t counter) {
+  uint8_t color = LED_GREEN;
+  
+  if (!counter) {
+    // generate a random permutation on the pixels array
+    // see http://c-faq.com/lib/shuffle.html
+    // and Knuth Sec. 3.4.2 pp. 137-8 
+    for (uint8_t i = 0; i < 64; i++) {
+      pixels[i] = i + 1;
+    }
+    for (uint8_t i = 0; i < 63; i++) {
+      uint8_t c = random(64 - i);
+      uint8_t t = pixels[i];
+      pixels[i] = pixels[i+c];
+      pixels[i+c] = t;
+    }
+  }
+  
+  if (counter >= 40) {
+    color = LED_YELLOW;
+  }
+  if (counter >= 56) {
+    color = LED_RED;
+  }
+  
+  uint8_t i = pixels[counter] / 8;
+  uint8_t j = pixels[counter] % 8;
+  matrix.drawPixel(j, i, color);
+  matrix.writeDisplay();
+}
+
+void spiralizer(uint8_t counter) {
+  static uint8_t spiral[] = {
+   0,  1,  2,  3,  4,  5,  6,  7,
+   15, 23, 31, 39, 47, 55, 63,
+   62, 61, 60, 59, 58, 57, 56,
+   48, 40, 32, 24, 16, 8,
+    9, 10, 11, 12, 13, 14,
+   22, 30, 38, 46, 54,
+   53, 52, 51, 50, 49,
+   41, 33, 25, 17,
+   18, 19, 20, 21,
+   29, 37, 45,
+   44, 43, 42,
+   34, 26,
+   27, 28,
+   36, 35
+  };
+  
+  int color = LED_GREEN;
+  if (counter >= 40) {
+    color = LED_YELLOW;
+  }
+  if (counter >= 56) {
+    color = LED_RED;
+  }
+  
+  uint8_t i = spiral[counter] / 8;
+  uint8_t j = spiral[counter] % 8;
+  
+  matrix.drawPixel(j, i, color);
+  matrix.writeDisplay();
 }
