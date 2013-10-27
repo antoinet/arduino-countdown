@@ -20,7 +20,7 @@
 #include "Adafruit_GFX.h"
 #include "constants.h"
 
-#define DEBUG
+//#define DEBUG
 
 // pin assignments
 const int btn_pin_1 = 2;
@@ -33,7 +33,7 @@ int state = STATE_WELCOME;
 int btn_state_1 = 0;
 int btn_state_2 = 0;
 int counter = 0;
-int timer = 0;
+unsigned long timer = 0UL;
 
 void setup() {
   // initialize pin modes
