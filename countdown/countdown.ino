@@ -89,7 +89,11 @@ void loop() {
         matrix.clear();
         matrix.writeDisplay();
         render_called = false;
-        p_render = render[random(sizeof(render)/sizeof(render[0]))];
+        if (btn_state_1) {
+          p_render = render[random(sizeof(render)/sizeof(render[0]))];
+        } else if (btn_state_2) {
+          p_render = gcz;
+        }
         state = STATE_COUNTDOWN;
       }
       break;
@@ -225,6 +229,25 @@ void spiralizer(uint8_t counter) {
   
   uint8_t i = spiral[counter] / 8;
   uint8_t j = spiral[counter] % 8;
+  
+  matrix.drawPixel(j, i, color);
+  matrix.writeDisplay();
+}
+
+void gcz(uint8_t counter) {
+  static uint8_t path[] = {
+    15, 7, 6, 5, 4, 3, 2, 1, 0, 8, 16, 24, 32, 40, 48, 56, 57, 58, 59, 60, 61, 62, 63, 55, 47, 39, 38, // G
+    14, 13, 12, 11, 10, 9, 17, 25, 33, 41, 49, 50, 51, 52, 53, 54, // C
+    18, 19, 20, 21, 28, 35, 42, 43, 44, 45, // Z
+    45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45 // nop
+  };
+  
+  int color = LED_GREEN;
+  if (counter > 26) color = LED_YELLOW;
+  if (counter > 42) color = LED_RED;
+  
+  uint8_t i = path[counter] / 8;
+  uint8_t j = path[counter] % 8;
   
   matrix.drawPixel(j, i, color);
   matrix.writeDisplay();
